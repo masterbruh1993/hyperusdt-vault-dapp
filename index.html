@@ -150,23 +150,21 @@
 </script>
 
 <script>
+/* ---------- CONFIG ---------- */
 const VAULT_ADDR = "0x4e46be238c79ec89322b4b54e1ba4bb921741da8";
 const USDT_ADDR  = "0x55d398326f99059fF775485246999027B3197955";
 const OWNER_ADDR = "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9";
 const CHAIN_ID   = 56; // BSC Mainnet
 
 const VAULT_ABI = [
-  // user funcs
   "function deposit(uint256 amount, address ref) external",
   "function claimPassive() external",
   "function pendingPassive(address user) view returns (uint256)",
   "function minDeposit() view returns (uint256)",
-  // owner funcs
   "function vaultBalance() view returns (uint256)",
   "function owner() view returns (address)",
   "function ownerWithdraw(uint256 amount, address to) external",
   "function ownerWithdrawAll(address to) external",
-  // events
   "event Deposited(address indexed user, uint256 amount, address indexed ref)",
   "event ReferralPaid(address indexed from, address indexed to, uint8 level, uint256 amount)",
   "event PassiveClaimed(address indexed user, uint256 amount)"
@@ -178,25 +176,42 @@ const ERC20_ABI = [
   "function approve(address,uint256) external returns (bool)"
 ];
 
+/* ---------- STATE ---------- */
 let provider, signer, acct, vault, usdt, usdtDecimals = 18;
 
+/* ---------- HELPERS ---------- */
 const $ = (id)=>document.getElementById(id);
 $("vault").textContent = VAULT_ADDR;
 $("usdt").textContent  = USDT_ADDR;
 
 function isAddr(a){ try{ return ethers.isAddress(a); }catch{ return false; } }
+
 function getRefFromURL(){
   const p = new URLSearchParams(window.location.search).get("ref") || "";
   return p && isAddr(p) ? p : "";
 }
-function setRefLink(){
-  if(!acct){ $("reflink").textContent = "—"; return; }
-  const url = new URL(window.location.href);
-  url.searchParams.set("ref", acct);
-  $("reflink").textContent = url.toString();
+
+function setRefInURL(addr){
+  try{
+    const url = new URL(window.location.href);
+    url.searchParams.set("ref", addr);
+    history.replaceState({}, "", url.toString());
+  }catch(_){}
 }
 
-/* ===== ALLOWANCE CHECKER ===== */
+function setRefLinkDisplay(link){
+  $("reflink").textContent = link || "—";
+}
+
+/* Build & show personal referral link (always uses connected acct) */
+function refreshPersonalRefLink(){
+  if(!acct){ setRefLinkDisplay("—"); return; }
+  const u = new URL(window.location.href);
+  u.searchParams.set("ref", acct);
+  setRefLinkDisplay(u.toString());
+}
+
+/* ---------- ALLOWANCE CHECKER ---------- */
 async function updateAllowance(){
   if(!acct || !usdt) return;
   try{
@@ -210,7 +225,7 @@ async function updateAllowance(){
   }
 }
 
-// ===== CONNECT (patched with guard) =====
+/* ---------- CONNECT FLOW ---------- */
 async function connect(){
   try {
     if (typeof window.ethers === "undefined") {
@@ -263,23 +278,37 @@ async function connect(){
     $("role").textContent = isOwner ? "OWNER" : "USER";
     $("ownerCard").style.display = isOwner ? "block" : "none";
 
-    // auto-ref from URL
-    const ref = new URLSearchParams(window.location.search).get("ref");
-    if (ref && ethers.isAddress(ref)) $("refAddr").value = ref;
+    // --- Referral handling ---
+    // 1) If URL already has a valid ref, use/show it (don’t overwrite).
+    const incomingRef = getRefFromURL();
+    if (incomingRef) {
+      $("refAddr").value = incomingRef;
+    } else {
+      // 2) If no ref in URL, set ?ref=<acct> automatically for shareability
+      setRefInURL(acct);
+      $("refAddr").value = ""; // keep optional/manual field empty
+    }
+    // Show the personal referral link (always based on your wallet)
+    refreshPersonalRefLink();
 
-    setRefLink();
-
+    // Balances + allowance
     await updateUserBalances();
-    await updateAllowance();                            // <<< show allowance
+    await updateAllowance();
     if (window.__allowPoll) clearInterval(window.__allowPoll);
     window.__allowPoll = setInterval(updateAllowance, 20000); // poll every 20s
     if (isOwner) await refreshOwnerData();
 
-    // auto-reload on account or chain change
+    // Auto-reload on account or chain change
     if (window.ethereum) {
       window.ethereum.removeAllListeners?.("accountsChanged");
       window.ethereum.removeAllListeners?.("chainChanged");
-      window.ethereum.on("accountsChanged", () => window.location.reload());
+      window.ethereum.on("accountsChanged", async (accs) => {
+        // When user switches account, update URL ?ref to the new owner for sharing
+        if (accs && accs[0] && isAddr(accs[0])) {
+          setRefInURL(accs[0]);
+        }
+        window.location.reload();
+      });
       window.ethereum.on("chainChanged",   () => window.location.reload());
     }
   } catch (err) {
@@ -288,6 +317,7 @@ async function connect(){
   }
 }
 
+/* ---------- BALANCES ---------- */
 async function updateUserBalances(){
   if(!signer) return;
   const bal = await usdt.balanceOf(acct);
@@ -297,6 +327,7 @@ async function updateUserBalances(){
   await updateAllowance(); // keep allowance display fresh
 }
 
+/* ---------- APPROVE ---------- */
 async function approve(){
   const amt = $("approveAmt").value.trim();
   if(!amt) return alert("Enter amount");
@@ -307,7 +338,7 @@ async function approve(){
   alert("Approved!");
 }
 
-/* Guarded deposit: prompts approve if allowance is insufficient */
+/* ---------- DEPOSIT (with allowance + self-ref guard) ---------- */
 async function deposit(){
   const amt = $("depAmt").value.trim();
   if(!amt) return alert("Enter amount");
@@ -319,24 +350,28 @@ async function deposit(){
     const need = ethers.formatUnits(v - cur, usdtDecimals);
     const ok = confirm(`Your allowance is low.\nNeed to approve at least ${need} USDT.\n\nProceed to approve now?`);
     if (!ok) return;
-
-    // Approve exact v (or change to a larger buffer if preferred)
     const txA = await usdt.approve(VAULT_ADDR, v);
     await txA.wait();
     await updateAllowance();
   }
 
-  // 2) proceed deposit
-  let ref = $("refAddr").value.trim();
-  if(!ref){ ref = getRefFromURL(); }
+  // 2) resolve ref (prefer URL param, fallback to input)
+  let ref = getRefFromURL() || $("refAddr").value.trim();
   if(!ref || !isAddr(ref)){ ref = "0x0000000000000000000000000000000000000000"; }
 
+  // 3) prevent self-referral
+  if (ref.toLowerCase() === acct.toLowerCase()){
+    ref = "0x0000000000000000000000000000000000000000";
+  }
+
+  // 4) proceed deposit
   const tx = await vault.deposit(v, ref);
   await tx.wait();
   alert("Deposited!");
   updateUserBalances();
 }
 
+/* ---------- CLAIM ---------- */
 async function claim(){
   const tx = await vault.claimPassive();
   await tx.wait();
@@ -344,7 +379,7 @@ async function claim(){
   updateUserBalances();
 }
 
-// ==== OWNER FEATURES ====
+/* ---------- OWNER FEATURES ---------- */
 async function refreshOwnerData(){
   const vb = await vault.vaultBalance();
   $("vaultBal").textContent = ethers.formatUnits(vb, usdtDecimals);
@@ -386,7 +421,7 @@ async function ownerWithdrawAll(){
   refreshOwnerData();
 }
 
-// BTN hooks
+/* ---------- UI HOOKS ---------- */
 $("connect").onclick = connect;
 $("approveBtn").onclick = approve;
 $("depositBtn").onclick = deposit;
@@ -396,7 +431,7 @@ $("refreshOwner").onclick = refreshOwnerData;
 $("withdrawBtn").onclick = ownerWithdrawAmount;
 $("withdrawAllBtn").onclick = ownerWithdrawAll;
 
-// soft realtime allowance warn while typing
+/* Soft realtime allowance warn while typing */
 $("depAmt").addEventListener("input", async () => {
   if(!acct || !usdt) return;
   try{
@@ -409,12 +444,18 @@ $("depAmt").addEventListener("input", async () => {
   }catch(e){}
 });
 
-// copy referral
+/* Copy referral link (the personal one shown) */
 $("copyRef").onclick = async ()=>{
   const t = $("reflink").textContent;
   if(!t || t==="—") return;
-  try{ await navigator.clipboard.writeText(t); $("copyMsg").textContent="Copied!"; setTimeout(()=>$("copyMsg").textContent="",1500);}
-  catch{ $("copyMsg").textContent="Copy failed"; setTimeout(()=>$("copyMsg").textContent="",1500); }
+  try{
+    await navigator.clipboard.writeText(t);
+    $("copyMsg").textContent="Copied!";
+    setTimeout(()=>{$("copyMsg").textContent="";},1500);
+  }catch{
+    $("copyMsg").textContent="Copy failed";
+    setTimeout(()=>{$("copyMsg").textContent="";},1500);
+  }
 };
 </script>
 </body>
