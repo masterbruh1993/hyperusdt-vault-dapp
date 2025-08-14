@@ -114,17 +114,72 @@
 
 </div>
 
+<!-- Ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
 
+<!-- BEGIN SCRIPT (Part 2 will continue this) -->
 <script>
+/* ---------- CONFIG ---------- */
 const VAULT_ADDR = "0x4e46be238c79ec89322b4b54e1ba4bb921741da8";
 const USDT_ADDR  = "0x55d398326f99059fF775485246999027B3197955";
 const OWNER_ADDR = "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9";
 const CHAIN_ID   = 56;
 
-// FULL ABI paste here
-const VAULT_ABI = [/* paste mo dito yung buong ABI JSON na binigay mo noon */];
-
+/* ---------- FULL VAULT_ABI ---------- */
+const VAULT_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "usdtToken", "type": "address" },
+      { "internalType": "address", "name": "treasury_", "type": "address" },
+      { "internalType": "address", "name": "owner_", "type": "address" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" } ], "name": "OwnableInvalidOwner", "type": "error" },
+  { "inputs": [ { "internalType": "address", "name": "account", "type": "address" } ], "name": "OwnableUnauthorizedAccount", "type": "error" },
+  { "inputs": [ { "internalType": "address", "name": "token", "type": "address" } ], "name": "SafeERC20FailedOperation", "type": "error" },
+  { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "uint32", "name": "passiveCooldown", "type": "uint32" } ], "name": "ClaimPolicyUpdated", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "string", "name": "what", "type": "string" } ], "name": "ConfigUpdated", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "user", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "ref", "type": "address" } ], "name": "Deposited", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "to", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "OwnerWithdraw", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "to", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "OwnerWithdrawAll", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "previousOwner", "type": "address" }, { "indexed": true, "internalType": "address", "name": "newOwner", "type": "address" } ], "name": "OwnershipTransferred", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "user", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "PassiveClaimed", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "address", "name": "account", "type": "address" } ], "name": "Paused", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "from", "type": "address" }, { "indexed": true, "internalType": "address", "name": "to", "type": "address" }, { "indexed": false, "internalType": "uint8", "name": "level", "type": "uint8" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "ReferralPaid", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "address", "name": "treasury", "type": "address" } ], "name": "TreasuryUpdated", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "address", "name": "account", "type": "address" } ], "name": "Unpaused", "type": "event" },
+  { "inputs": [], "name": "claimPassive", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "dailyRateBP", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "amount", "type": "uint256" }, { "internalType": "address", "name": "ref", "type": "address" } ], "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "", "type": "address" }, { "internalType": "uint256", "name": "", "type": "uint256" } ], "name": "deposits", "outputs": [ { "internalType": "uint256", "name": "amount", "type": "uint256" }, { "internalType": "uint40", "name": "start", "type": "uint40" }, { "internalType": "uint40", "name": "lastClaim", "type": "uint40" }, { "internalType": "bool", "name": "closed", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "", "type": "address" } ], "name": "lastPassiveClaimAt", "outputs": [ { "internalType": "uint40", "name": "", "type": "uint40" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "minDeposit", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "owner", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "amount", "type": "uint256" }, { "internalType": "address", "name": "to", "type": "address" } ], "name": "ownerWithdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "to", "type": "address" } ], "name": "ownerWithdrawAll", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "passiveClaimCooldown", "outputs": [ { "internalType": "uint32", "name": "", "type": "uint32" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "pause", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "paused", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "user", "type": "address" } ], "name": "pendingPassive", "outputs": [ { "internalType": "uint256", "name": "total", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "planDays", "outputs": [ { "internalType": "uint16", "name": "", "type": "uint16" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "name": "refBps", "outputs": [ { "internalType": "uint16", "name": "", "type": "uint16" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "renounceOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "token", "type": "address" }, { "internalType": "uint256", "name": "amount", "type": "uint256" }, { "internalType": "address", "name": "to", "type": "address" } ], "name": "rescueToken", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "_dailyRateBP", "type": "uint256" }, { "internalType": "uint16", "name": "_planDays", "type": "uint16" }, { "internalType": "uint256", "name": "_minDeposit", "type": "uint256" } ], "name": "setConfig", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "uint32", "name": "seconds_", "type": "uint32" } ], "name": "setPassiveClaimCooldown", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "uint16[5]", "name": "arr", "type": "uint16[5]" } ], "name": "setRefBps", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "ref", "type": "address" } ], "name": "setReferrer", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "t", "type": "address" } ], "name": "setTreasury", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "newOwner", "type": "address" } ], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "treasury", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "unpause", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "usdt", "outputs": [ { "internalType": "contract IERC20", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "address", "name": "", "type": "address" } ], "name": "users", "outputs": [ { "internalType": "address", "name": "referrer", "type": "address" }, { "internalType": "uint256", "name": "totalDeposited", "type": "uint256" }, { "internalType": "uint256", "name": "totalClaimedYield", "type": "uint256" }, { "internalType": "uint256", "name": "totalReferralEarned", "type": "uint256" }, { "internalType": "uint32", "name": "depositsCount", "type": "uint32" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "vaultBalance", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" }
+];
+/* ---------- ERC20 ABI ---------- */
 const ERC20_ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
@@ -132,9 +187,13 @@ const ERC20_ABI = [
   "function approve(address,uint256) external returns (bool)"
 ];
 
+/* ---------- STATE ---------- */
 let provider, signer, acct, vault, usdt, usdtDecimals = 18;
+
+/* ---------- DOM HELPER ---------- */
 const $ = (id)=>document.getElementById(id);
 
+/* ---------- UTIL ---------- */
 function isAddr(a){ try{ return ethers.isAddress(a); }catch{ return false; } }
 function getRefFromURL(){
   const p = new URLSearchParams(window.location.search).get("ref") || "";
@@ -154,43 +213,70 @@ function refreshPersonalRefLink(){
   $("reflink").textContent = u.toString();
 }
 
+/* ---------- CONNECT ---------- */
 async function connect(){
+  if (!window.ethereum) { alert("MetaMask not found"); return; }
+  // request accounts
   await window.ethereum.request({ method: "eth_requestAccounts" });
-  await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+  // switch to BSC
+  try{
+    await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+  }catch(e){
+    if (e.code === 4902){
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x38",
+          chainName: "BNB Smart Chain Mainnet",
+          nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+          rpcUrls: ["https://bsc-dataseed.binance.org/"],
+          blockExplorerUrls: ["https://bscscan.com/"]
+        }]
+      });
+    }else{
+      alert("Network switch error: " + (e?.message || e)); return;
+    }
+  }
 
   provider = new ethers.BrowserProvider(window.ethereum);
   signer   = await provider.getSigner();
   acct     = await signer.getAddress();
+
   $("acct").textContent = acct;
+  $("vault").textContent = VAULT_ADDR;
 
   vault = new ethers.Contract(VAULT_ADDR, VAULT_ABI, signer);
-  usdt  = new ethers.Contract(USDT_ADDR, ERC20_ABI, signer);
-  usdtDecimals = await usdt.decimals();
+  usdt  = new ethers.Contract(USDT_ADDR,  ERC20_ABI,  signer);
+  try { usdtDecimals = await usdt.decimals(); } catch(_){ usdtDecimals = 18; }
 
+  // owner check
   const on = (await vault.owner()).toLowerCase();
-  const isOwner = acct.toLowerCase() === on || acct.toLowerCase() === OWNER_ADDR.toLowerCase();
+  const isOwner = (acct.toLowerCase() === on) || (acct.toLowerCase() === OWNER_ADDR.toLowerCase());
   $("role").textContent = isOwner ? "OWNER" : "USER";
   $("ownerCard").style.display = isOwner ? "block" : "none";
 
+  // ref link handling
   const incomingRef = getRefFromURL();
   if (incomingRef) $("refAddr").value = incomingRef;
   else setRefInURL(acct);
-
   refreshPersonalRefLink();
+
   await refreshStats();
-  setInterval(refreshStats, 20000);
+  if (window.__statPoll) clearInterval(window.__statPoll);
+  window.__statPoll = setInterval(refreshStats, 20000);
+
+  // reload on changes
+  window.ethereum?.removeAllListeners?.("accountsChanged");
+  window.ethereum?.removeAllListeners?.("chainChanged");
+  window.ethereum?.on?.("accountsChanged", ()=>window.location.reload());
+  window.ethereum?.on?.("chainChanged",  ()=>window.location.reload());
 }
 
+/* ---------- REFRESH STATS ---------- */
 async function refreshStats(){
   if(!acct || !vault || !usdt) return;
-  try {
-    const [
-      balRaw,
-      pendingRaw,
-      vaultBalRaw,
-      dailyRateBP,
-      allowanceRaw
-    ] = await Promise.all([
+  try{
+    const [ balRaw, pendingRaw, vaultBalRaw, dailyRateBP, allowanceRaw ] = await Promise.all([
       usdt.balanceOf(acct),
       vault.pendingPassive(acct),
       vault.vaultBalance(),
@@ -198,71 +284,99 @@ async function refreshStats(){
       usdt.allowance(acct, VAULT_ADDR)
     ]);
 
-    $("bal").textContent        = ethers.formatUnits(balRaw, usdtDecimals);
-    $("pending").textContent    = ethers.formatUnits(pendingRaw, usdtDecimals);
-    $("vaultBal").textContent   = ethers.formatUnits(vaultBalRaw, usdtDecimals);
-    $("dailyRate").textContent  = (Number(dailyRateBP)/100).toFixed(2) + "%";
-    $("allow").textContent      = ethers.formatUnits(allowanceRaw, usdtDecimals);
-    $("allowWarn").style.display= Number(ethers.formatUnits(allowanceRaw, usdtDecimals)) < 0.001 ? "inline-block" : "none";
-  } catch(e){ console.error(e); }
+    $("bal").textContent       = ethers.formatUnits(balRaw, usdtDecimals);
+    $("pending").textContent   = ethers.formatUnits(pendingRaw, usdtDecimals);
+    $("vaultBal").textContent  = ethers.formatUnits(vaultBalRaw, usdtDecimals);
+    $("dailyRate").textContent = (Number(dailyRateBP)/100).toFixed(2) + "%";
+
+    const allowance = Number(ethers.formatUnits(allowanceRaw, usdtDecimals));
+    $("allow").textContent = allowance.toString();
+    $("allowWarn").style.display = allowance < 0.001 ? "inline-block" : "none";
+  }catch(e){
+    console.error("refreshStats error:", e);
+  }
 }
 
+/* ---------- APPROVE ---------- */
 async function approve(){
+  if(!acct) return alert("Connect wallet first");
   const amt = $("approveAmt").value.trim();
-  if(!amt) return alert("Enter amount");
-  const v = ethers.parseUnits(amt, usdtDecimals);
-  const tx = await usdt.approve(VAULT_ADDR, v);
-  await tx.wait();
-  alert("Approved!");
-  await refreshStats();
+  if(!amt || Number(amt) <= 0) return alert("Enter amount");
+  try{
+    const v  = ethers.parseUnits(amt, usdtDecimals);
+    const tx = await usdt.approve(VAULT_ADDR, v);
+    await tx.wait();
+    alert("Approved!");
+    await refreshStats();
+  }catch(e){ alert("Approve failed: " + (e?.message || e)); }
 }
 
+/* ---------- DEPOSIT ---------- */
 async function deposit(){
+  if(!acct) return alert("Connect wallet first");
   const amt = $("depAmt").value.trim();
-  if(!amt) return alert("Enter amount");
-  const v = ethers.parseUnits(amt, usdtDecimals);
+  if(!amt || Number(amt) <= 0) return alert("Enter amount");
+  try{
+    const v = ethers.parseUnits(amt, usdtDecimals);
 
-  const curAllowance = await usdt.allowance(acct, VAULT_ADDR);
-  if (curAllowance < v) {
-    await approve();
-  }
+    // ensure allowance
+    const curAllowance = await usdt.allowance(acct, VAULT_ADDR);
+    if (curAllowance < v) {
+      const ok = confirm("Allowance is low. Approve now?");
+      if (!ok) return;
+      const txA = await usdt.approve(VAULT_ADDR, v);
+      await txA.wait();
+    }
 
-  let ref = getRefFromURL() || $("refAddr").value.trim();
-  if(!isAddr(ref) || ref.toLowerCase() === acct.toLowerCase()){
-    ref = ethers.ZeroAddress;
-  }
+    // ref from URL or input; guard self
+    let ref = getRefFromURL() || $("refAddr").value.trim();
+    if(!isAddr(ref) || ref.toLowerCase() === acct.toLowerCase()){
+      ref = ethers.ZeroAddress;
+    }
 
-  const tx = await vault.deposit(v, ref);
-  await tx.wait();
-  alert("Deposited!");
-  await refreshStats();
+    const tx = await vault.deposit(v, ref);
+    await tx.wait();
+    alert("Deposited!");
+    await refreshStats();
+  }catch(e){ alert("Deposit failed: " + (e?.message || e)); }
 }
 
+/* ---------- CLAIM ---------- */
 async function claim(){
-  const tx = await vault.claimPassive();
-  await tx.wait();
-  alert("Claimed!");
-  await refreshStats();
+  if(!acct) return alert("Connect wallet first");
+  try{
+    const tx = await vault.claimPassive();
+    await tx.wait();
+    alert("Claimed!");
+    await refreshStats();
+  }catch(e){ alert("Claim failed: " + (e?.message || e)); }
 }
 
+/* ---------- OWNER WITHDRAW ---------- */
 async function ownerWithdrawAmount(){
+  if(!acct) return alert("Connect wallet first");
   const amt = $("wdAmt").value.trim();
-  if(!amt) return alert("Enter amount");
-  const v = ethers.parseUnits(amt, usdtDecimals);
-  const tx = await vault.ownerWithdraw(v, acct);
-  await tx.wait();
-  alert("Withdrawn!");
-  await refreshStats();
+  if(!amt || Number(amt) <= 0) return alert("Enter amount");
+  try{
+    const v  = ethers.parseUnits(amt, usdtDecimals);
+    const tx = await vault.ownerWithdraw(v, acct); // send to connected owner wallet
+    await tx.wait();
+    alert("Withdrawn!");
+    await refreshStats();
+  }catch(e){ alert("Owner withdraw failed: " + (e?.message || e)); }
 }
-
 async function ownerWithdrawAll(){
-  if(!confirm("Withdraw ALL USDT?")) return;
-  const tx = await vault.ownerWithdrawAll(acct);
-  await tx.wait();
-  alert("All funds withdrawn!");
-  await refreshStats();
+  if(!acct) return alert("Connect wallet first");
+  if(!confirm("Withdraw ALL USDT to your connected wallet?")) return;
+  try{
+    const tx = await vault.ownerWithdrawAll(acct);
+    await tx.wait();
+    alert("All funds withdrawn!");
+    await refreshStats();
+  }catch(e){ alert("Owner withdraw all failed: " + (e?.message || e)); }
 }
 
+/* ---------- UI HOOKS ---------- */
 $("connect").onclick = connect;
 $("approveBtn").onclick = approve;
 $("depositBtn").onclick = deposit;
@@ -272,9 +386,13 @@ $("withdrawBtn").onclick = ownerWithdrawAmount;
 $("withdrawAllBtn").onclick = ownerWithdrawAll;
 $("copyRef").onclick = async ()=>{
   const t = $("reflink").textContent;
-  if(t && t!=="—") {
+  if(!t || t==="—") return;
+  try{
     await navigator.clipboard.writeText(t);
     $("copyMsg").textContent="Copied!";
+    setTimeout(()=>{$("copyMsg").textContent="";},1500);
+  }catch{
+    $("copyMsg").textContent="Copy failed";
     setTimeout(()=>{$("copyMsg").textContent="";},1500);
   }
 };
