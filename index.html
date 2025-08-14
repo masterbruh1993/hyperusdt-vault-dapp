@@ -117,13 +117,14 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
 
 <script>
-// CONFIG
 const VAULT_ADDR = "0x4e46be238c79ec89322b4b54e1ba4bb921741da8";
 const USDT_ADDR  = "0x55d398326f99059fF775485246999027B3197955";
 const OWNER_ADDR = "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9";
 const CHAIN_ID   = 56;
 
-const VAULT_ABI = [/* ilagay dito buong ABI mo */];
+// FULL ABI paste here
+const VAULT_ABI = [/* paste mo dito yung buong ABI JSON na binigay mo noon */];
+
 const ERC20_ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
@@ -262,7 +263,6 @@ async function ownerWithdrawAll(){
   await refreshStats();
 }
 
-// UI hooks
 $("connect").onclick = connect;
 $("approveBtn").onclick = approve;
 $("depositBtn").onclick = deposit;
