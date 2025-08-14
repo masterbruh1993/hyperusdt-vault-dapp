@@ -1,14 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HyperUSDT – BSC Mainnet</title>
 <style>
-  /* same styles mo dito */
+  body{background:#0b0f14;color:#e7f1ff;font-family:Inter,system-ui,Arial;margin:0}
+  .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+  .card{background:#121821;border:1px solid #1e2936;border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+  h1{font-size:28px;margin:0 0 10px}
+  h2{font-size:20px;margin:8px 0 12px;color:#8bd3ff}
+  label{display:block;margin:8px 0 6px;color:#9fb3c8}
+  input{width:100%;padding:10px;border-radius:10px;border:1px solid #253447;background:#0e141b;color:#dbeafe}
+  button{padding:10px 14px;border:1px solid #2c425a;border-radius:12px;background:#0f1621;color:#e6f3ff;cursor:pointer}
+  button:hover{filter:brightness(1.15)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .col{flex:1;min-width:260px}
+  .muted{color:#8aa0b5;font-size:13px}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .accent{color:#66e0ff}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid #2c425a;border-radius:999px}
+  .list{max-height:300px;overflow:auto;border:1px solid #1e2936;border-radius:10px;padding:8px;background:#0d141b}
+  .rowline{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #1e2936;padding:8px 0}
+  .danger{border-color:#4a1f1f;background:#171014}
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <!-- HEADER -->
   <div class="card">
     <h1>HyperUSDT <span class="muted">— BSC Mainnet</span></h1>
@@ -17,20 +36,94 @@
     <div class="muted">Connected: <span id="acct" class="mono">—</span> <span id="role" class="pill" style="margin-left:8px">—</span></div>
     <div style="margin-top:10px"><button id="connect">Connect Wallet</button></div>
   </div>
-  
-  <!-- rest ng UI mo unchanged -->
+
+  <!-- APPROVE -->
+  <div class="card">
+    <h2>Approve USDT</h2>
+    <div class="row">
+      <div class="col">
+        <label>Amount (USDT)</label>
+        <input id="approveAmt" placeholder="e.g., 100">
+      </div>
+      <div class="col" style="align-self:end">
+        <button id="approveBtn">Approve</button>
+      </div>
+    </div>
+    <div class="muted">
+      Current allowance: <span id="allow" class="mono">0</span> USDT
+      <span id="allowWarn" class="pill" style="margin-left:8px; display:none; border-color:#5a2a2a;background:#1a0f0f;color:#ffb3b3">
+        Low / zero — approve again
+      </span>
+    </div>
+  </div>
+
+  <!-- DEPOSIT -->
+  <div class="card">
+    <h2>Buy Plan / Deposit</h2>
+    <div class="row">
+      <div class="col">
+        <label>Amount (min 10 USDT)</label>
+        <input id="depAmt" placeholder="e.g., 50">
+      </div>
+      <div class="col">
+        <label>Referrer (auto from link, optional)</label>
+        <input id="refAddr" placeholder="0x...">
+      </div>
+      <div class="col" style="align-self:end">
+        <button id="depositBtn">Deposit</button>
+      </div>
+    </div>
+    <div class="muted">Your USDT balance: <span id="bal" class="mono">—</span></div>
+  </div>
+
+  <!-- PASSIVE -->
+  <div class="card">
+    <h2>Passive Earnings</h2>
+    <div>Pending (USDT): <span id="pending" class="mono accent">0</span></div>
+    <div class="muted">Claim once every 24 hours</div>
+    <div style="margin-top:8px">
+      <button id="refresh">Refresh</button>
+      <button id="claim">Claim Passive</button>
+    </div>
+  </div>
+
+  <!-- REFERRAL -->
+  <div class="card">
+    <h2>Your Referral Link</h2>
+    <div class="muted">Share your link to earn instant commissions on deposits under you.</div>
+    <div id="reflink" class="mono" style="margin-top:8px">—</div>
+    <div style="margin-top:8px">
+      <button id="copyRef">Copy Link</button>
+      <span id="copyMsg" class="muted"></span>
+    </div>
+  </div>
+
+  <!-- OWNER DASHBOARD -->
+  <div class="card" id="ownerCard" style="display:none">
+    <h2>Owner Dashboard</h2>
+    <div>Vault Balance: <span id="vaultBal" class="mono accent">0</span> USDT</div>
+    <div style="margin-top:8px">
+      <label>Withdraw amount (USDT)</label>
+      <input id="wdAmt" placeholder="e.g., 50">
+      <div style="margin-top:8px">
+        <button id="withdrawBtn">Withdraw Amount</button>
+        <button id="withdrawAllBtn">Withdraw ALL</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
 
 <script>
-/* ---------- CONFIG ---------- */
+// CONFIG
 const VAULT_ADDR = "0x4e46be238c79ec89322b4b54e1ba4bb921741da8";
 const USDT_ADDR  = "0x55d398326f99059fF775485246999027B3197955";
 const OWNER_ADDR = "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9";
 const CHAIN_ID   = 56;
 
-const VAULT_ABI = [/* yung buong ABI mo dito */];
+const VAULT_ABI = [/* ilagay dito buong ABI mo */];
 const ERC20_ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
@@ -41,10 +134,6 @@ const ERC20_ABI = [
 let provider, signer, acct, vault, usdt, usdtDecimals = 18;
 const $ = (id)=>document.getElementById(id);
 
-$("vault").textContent = VAULT_ADDR;
-$("usdt").textContent  = USDT_ADDR;
-
-/* ---------- REF HELPERS ---------- */
 function isAddr(a){ try{ return ethers.isAddress(a); }catch{ return false; } }
 function getRefFromURL(){
   const p = new URLSearchParams(window.location.search).get("ref") || "";
@@ -64,7 +153,6 @@ function refreshPersonalRefLink(){
   $("reflink").textContent = u.toString();
 }
 
-/* ---------- CONNECT ---------- */
 async function connect(){
   await window.ethereum.request({ method: "eth_requestAccounts" });
   await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
@@ -89,23 +177,20 @@ async function connect(){
 
   refreshPersonalRefLink();
   await refreshStats();
-  setInterval(refreshStats, 20000); // auto-refresh
+  setInterval(refreshStats, 20000);
 }
 
-/* ---------- REFRESH STATS ---------- */
 async function refreshStats(){
   if(!acct || !vault || !usdt) return;
   try {
     const [
       balRaw,
-      userInfo,
       pendingRaw,
       vaultBalRaw,
       dailyRateBP,
       allowanceRaw
     ] = await Promise.all([
       usdt.balanceOf(acct),
-      vault.users(acct),
       vault.pendingPassive(acct),
       vault.vaultBalance(),
       vault.dailyRateBP(),
@@ -118,11 +203,9 @@ async function refreshStats(){
     $("dailyRate").textContent  = (Number(dailyRateBP)/100).toFixed(2) + "%";
     $("allow").textContent      = ethers.formatUnits(allowanceRaw, usdtDecimals);
     $("allowWarn").style.display= Number(ethers.formatUnits(allowanceRaw, usdtDecimals)) < 0.001 ? "inline-block" : "none";
-
   } catch(e){ console.error(e); }
 }
 
-/* ---------- APPROVE ---------- */
 async function approve(){
   const amt = $("approveAmt").value.trim();
   if(!amt) return alert("Enter amount");
@@ -133,7 +216,6 @@ async function approve(){
   await refreshStats();
 }
 
-/* ---------- DEPOSIT ---------- */
 async function deposit(){
   const amt = $("depAmt").value.trim();
   if(!amt) return alert("Enter amount");
@@ -155,7 +237,6 @@ async function deposit(){
   await refreshStats();
 }
 
-/* ---------- CLAIM ---------- */
 async function claim(){
   const tx = await vault.claimPassive();
   await tx.wait();
@@ -163,7 +244,6 @@ async function claim(){
   await refreshStats();
 }
 
-/* ---------- OWNER WITHDRAW ---------- */
 async function ownerWithdrawAmount(){
   const amt = $("wdAmt").value.trim();
   if(!amt) return alert("Enter amount");
@@ -173,6 +253,7 @@ async function ownerWithdrawAmount(){
   alert("Withdrawn!");
   await refreshStats();
 }
+
 async function ownerWithdrawAll(){
   if(!confirm("Withdraw ALL USDT?")) return;
   const tx = await vault.ownerWithdrawAll(acct);
@@ -181,7 +262,7 @@ async function ownerWithdrawAll(){
   await refreshStats();
 }
 
-/* ---------- UI HOOKS ---------- */
+// UI hooks
 $("connect").onclick = connect;
 $("approveBtn").onclick = approve;
 $("depositBtn").onclick = deposit;
