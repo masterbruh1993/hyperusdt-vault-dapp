@@ -1,344 +1,202 @@
-<!--
-HyperUSDT Vault – Final Test Build
-- Clean UI
-- Owner-only Allowance Warning
-- Referral link generator + sanitizer
-- Role-based UI (Owner vs User)
-- Network guard for BSC Mainnet (chainId 0x38)
-- Auto-refresh stats
-- Buttons disabled until ready states
-
-HOW TO USE
-1) Replace the CONFIG placeholders below (ownerAddress, vaultAddress, usdtAddress, abi objects).
-2) Save as index.html at project root (GitHub Pages set to serve from root).
-3) Commit & push. When HTTPS is active, test with MetaMask/Trust Wallet.
-4) Optional: Split CSS/JS into separate files later. For now kept in one file for easy copy-paste.
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HyperUSDT Vault</title>
-  <meta name="description" content="Deposit USDT, earn daily yield, and claim. Referral-enabled, owner dashboard, BSC network." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    :root{--bg:#0b0f14;--card:#121820;--muted:#73839b;--text:#e9f1ff;--acc:#2ad4ff;--ok:#27d980;--warn:#ffb020;--err:#ff4d4d}
-    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,rgba(42,212,255,.15),transparent),linear-gradient(180deg,#0b0f14,#0a0c10);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:1050px;margin:40px auto;padding:0 16px}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
-    .brand{display:flex;gap:12px;align-items:center}
-    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2ad4ff,#7a5cff);box-shadow:0 6px 24px rgba(42,212,255,.35)}
-    h1{font-size:22px;margin:0} .sub{color:var(--muted);font-size:13px}
-    .card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
-    .grid{display:grid;gap:16px}
-    @media(min-width:900px){.grid{grid-template-columns:1.2fr 1fr}}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:#1a232e;color:var(--text);cursor:pointer;transition:transform .04s ease,opacity .2s}
-    .btn:hover{transform:translateY(-1px)} .btn[disabled]{opacity:.45;cursor:not-allowed}
-    .btn.acc{background:linear-gradient(135deg,#2ad4ff,#7a5cff)}
-    .stat{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:#0f141b;border:1px solid rgba(255,255,255,.06)}
-    .stat .k{color:var(--muted);font-size:12px} .stat .v{font-weight:700;font-size:18px}
-    input, .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    input[type="text"],input[type="number"]{width:100%;background:#0f141b;color:var(--text);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
-    label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
-    .pill{font-size:12px;border-radius:999px;padding:6px 10px;background:#0f141b;border:1px solid rgba(255,255,255,.08)}
-    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)} .muted{color:var(--muted)}
-    .section-title{font-weight:700;margin:0 0 8px}
-    .divider{height:1px;background:rgba(255,255,255,.06);margin:14px 0}
-    .tiny{font-size:12px}
-    .hide{display:none !important}
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperUSDT – BSC Mainnet</title>
+<style>
+  /* same styles mo dito */
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <h1>HyperUSDT Vault</h1>
-          <div class="sub">BSC Mainnet • USDT BEP-20 • 3% daily (test build)</div>
-        </div>
-      </div>
-      <div class="row">
-        <span id="netStatus" class="pill">Network: <b class="mono" id="netName">–</b></span>
-        <span id="acctStatus" class="pill">Wallet: <b class="mono" id="acctShort">Not connected</b></span>
-        <button id="btnConnect" class="btn acc">Connect Wallet</button>
-      </div>
-    </header>
-
-    <div class="grid">
-      <!-- LEFT: User Panel -->
-      <section class="card">
-        <div class="section-title">Vault Actions</div>
-        <div class="row" style="gap:12px">
-          <div class="stat"><div class="k">Your USDT</div><div class="v mono" id="statUserUSDT">0.00</div></div>
-          <div class="stat"><div class="k">Your Deposit</div><div class="v mono" id="statUserDeposit">0.00</div></div>
-          <div class="stat"><div class="k">Accrued Earnings</div><div class="v mono" id="statUserEarnings">0.00</div></div>
-        </div>
-        <div class="divider"></div>
-        <div>
-          <label for="inpAmount">Amount (USDT)</label>
-          <input id="inpAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-          <div class="row" style="margin-top:10px">
-            <button id="btnApprove" class="btn">Approve</button>
-            <button id="btnDeposit" class="btn">Deposit</button>
-            <button id="btnClaim" class="btn">Claim Earnings</button>
-          </div>
-          <div style="margin-top:10px" class="tiny muted">Allowance: <span class="mono" id="allowanceView">0.00</span> USDT</div>
-        </div>
-        <div class="divider"></div>
-        <div>
-          <div class="section-title">Referral</div>
-          <div class="tiny muted">Share your invite link. New users connecting via your link may credit referral rewards (per smart contract rules).</div>
-          <div class="row" style="margin-top:10px;gap:10px">
-            <input id="inpRefLink" type="text" readonly />
-            <button id="btnCopyRef" class="btn">Copy</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- RIGHT: Vault & Owner Panel -->
-      <section class="card">
-        <div class="section-title">Vault Status</div>
-        <div class="row" style="gap:12px">
-          <div class="stat"><div class="k">Vault Balance</div><div class="v mono" id="statVaultBal">0.00</div></div>
-          <div class="stat"><div class="k">APY / Daily</div><div class="v mono" id="statAPY">—</div></div>
-          <div class="stat"><div class="k">Payout Cycle</div><div class="v mono" id="statCycle">24h</div></div>
-        </div>
-
-        <div id="ownerOnly" class="hide">
-          <div class="divider"></div>
-          <div class="section-title">Owner Dashboard</div>
-          <div id="allowanceWarning" class="tiny warn" style="display:none">⚠ Allowance detected as 0 for owner. Approve USDT to enable owner ops if required.</div>
-          <div class="row" style="margin-top:10px;gap:10px">
-            <input id="inpOwnerWithdraw" type="number" min="0" step="0.01" placeholder="Amount to withdraw (owner)" />
-            <button id="btnOwnerWithdraw" class="btn">Owner Withdraw</button>
-          </div>
-          <div class="tiny muted" style="margin-top:6px">Owner: <span id="ownerAddrView" class="mono">—</span></div>
-        </div>
-      </section>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="section-title">Activity</div>
-      <div class="tiny muted">Auto-refresh every 20s • Shows key state changes (local-only in this build)</div>
-      <ul id="log" class="tiny" style="margin-top:10px;line-height:1.5"></ul>
-    </div>
-
-    <footer class="tiny muted" style="margin:18px 0">© HyperUSDT Vault • Test Build • For demonstration and testing on BSC Mainnet. Ensure HTTPS is active before testing.</footer>
+<div class="wrap">
+  <!-- HEADER -->
+  <div class="card">
+    <h1>HyperUSDT <span class="muted">— BSC Mainnet</span></h1>
+    <div class="muted">Passive: <b><span id="dailyRate">—</span> daily × 30d</b> (claim 1×/day) • Referrals: <b>15/1/1/1/2%</b> instant</div>
+    <div class="muted">Vault: <span id="vault" class="mono">—</span></div>
+    <div class="muted">Connected: <span id="acct" class="mono">—</span> <span id="role" class="pill" style="margin-left:8px">—</span></div>
+    <div style="margin-top:10px"><button id="connect">Connect Wallet</button></div>
   </div>
+  
+  <!-- rest ng UI mo unchanged -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
 
 <script>
-// =================== CONFIG ===================
-const CONFIG = {
-  ownerAddress: "0x4e46be238c79ec89322b4b54e1ba4bb921741da8", // TODO: replace with your real owner wallet (checksum or lowercase ok)
-  vaultAddress: "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9", // TODO: your deployed Vault contract address
-  usdtAddress: "0x55d398326f99059fF775485246999027B3197955", // USDT BEP-20 on BSC Mainnet (verify if you use a mock)
-  refreshSec: 20,
-};
+/* ---------- CONFIG ---------- */
+const VAULT_ADDR = "0x4e46be238c79ec89322b4b54e1ba4bb921741da8";
+const USDT_ADDR  = "0x55d398326f99059fF775485246999027B3197955";
+const OWNER_ADDR = "0x3cf4C30204c99F718d1352417B9eC836bae87Fa9";
+const CHAIN_ID   = 56;
 
-// Minimal ABIs (replace with your actual contract ABIs)
-const USDT_ABI = [
+const VAULT_ABI = [/* yung buong ABI mo dito */];
+const ERC20_ABI = [
+  "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function decimals() view returns (uint8)"
-];
-const VAULT_ABI = [
-  // READS
-  "function vaultBalance() view returns (uint256)",
-  "function userDeposit(address) view returns (uint256)",
-  "function userEarnings(address) view returns (uint256)",
-  "function apyBps() view returns (uint256)", // e.g. 1095 = 10.95% apy, adjust to your spec
-  // WRITES
-  "function deposit(uint256 amount, address referrer)",
-  "function claim()",
-  "function ownerWithdraw(uint256 amount)"
+  "function allowance(address,address) view returns (uint256)",
+  "function approve(address,uint256) external returns (bool)"
 ];
 
-// =================== STATE ===================
-let provider, signer, user, net, usdt, vault, usdtDecimals = 18;
-let isOwner = false;
+let provider, signer, acct, vault, usdt, usdtDecimals = 18;
+const $ = (id)=>document.getElementById(id);
 
-// =================== HELPERS ===================
-const $ = sel => document.querySelector(sel);
-const log = (msg) => { const li = document.createElement('li'); li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`; document.getElementById('log').prepend(li); };
-const fmt = (v, d=2) => {
-  if (!v && v !== 0) return '0.00';
-  const num = Number(v);
-  if (Number.isNaN(num)) return '0.00';
-  return num.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
-};
-const shortAddr = (a) => a ? `${a.slice(0,6)}…${a.slice(-4)}` : '—';
+$("vault").textContent = VAULT_ADDR;
+$("usdt").textContent  = USDT_ADDR;
 
-// Sanitize and extract referral param strictly as 0x + 40 hex chars
-function getCleanRefAddress() {
-  const url = new URL(window.location.href);
-  const raw = url.searchParams.get('ref');
-  if (!raw) return null;
-  const m = String(raw).match(/0x[a-fA-F0-9]{40}/);
-  return m ? m[0] : null;
+/* ---------- REF HELPERS ---------- */
+function isAddr(a){ try{ return ethers.isAddress(a); }catch{ return false; } }
+function getRefFromURL(){
+  const p = new URLSearchParams(window.location.search).get("ref") || "";
+  return p && isAddr(p) ? p : "";
+}
+function setRefInURL(addr){
+  try{
+    const url = new URL(window.location.href);
+    url.searchParams.set("ref", addr);
+    history.replaceState({}, "", url.toString());
+  }catch(_){}
+}
+function refreshPersonalRefLink(){
+  if(!acct){ $("reflink").textContent = "—"; return; }
+  const u = new URL(window.location.href);
+  u.searchParams.set("ref", acct);
+  $("reflink").textContent = u.toString();
 }
 
-function setRefLink(addr){
-  const base = window.location.origin + window.location.pathname;
-  const link = `${base}?ref=${addr}`;
-  $('#inpRefLink').value = link;
+/* ---------- CONNECT ---------- */
+async function connect(){
+  await window.ethereum.request({ method: "eth_requestAccounts" });
+  await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer   = await provider.getSigner();
+  acct     = await signer.getAddress();
+  $("acct").textContent = acct;
+
+  vault = new ethers.Contract(VAULT_ADDR, VAULT_ABI, signer);
+  usdt  = new ethers.Contract(USDT_ADDR, ERC20_ABI, signer);
+  usdtDecimals = await usdt.decimals();
+
+  const on = (await vault.owner()).toLowerCase();
+  const isOwner = acct.toLowerCase() === on || acct.toLowerCase() === OWNER_ADDR.toLowerCase();
+  $("role").textContent = isOwner ? "OWNER" : "USER";
+  $("ownerCard").style.display = isOwner ? "block" : "none";
+
+  const incomingRef = getRefFromURL();
+  if (incomingRef) $("refAddr").value = incomingRef;
+  else setRefInURL(acct);
+
+  refreshPersonalRefLink();
+  await refreshStats();
+  setInterval(refreshStats, 20000); // auto-refresh
 }
 
-async function ensureBSC(){
-  const chainId = await provider.send('eth_chainId', []);
-  if (chainId !== '0x38') {
-    log('Wrong network. Attempting to switch to BSC Mainnet…');
-    try {
-      await provider.send('wallet_switchEthereumChain', [{ chainId: '0x38' }]);
-      return true;
-    } catch (e) {
-      log('Please switch to BSC Mainnet (chainId 56).');
-      return false;
-    }
-  }
-  return true;
-}
-
-async function initContracts(){
-  usdt = new ethers.Contract(CONFIG.usdtAddress, USDT_ABI, signer);
-  vault = new ethers.Contract(CONFIG.vaultAddress, VAULT_ABI, signer);
-  try { usdtDecimals = await usdt.decimals(); } catch(e) { usdtDecimals = 18; }
-}
-
-function toUnits(n){ return ethers.utils.parseUnits(String(n || 0), usdtDecimals); }
-function fromUnits(n){ return Number(ethers.utils.formatUnits(n || 0, usdtDecimals)); }
-
+/* ---------- REFRESH STATS ---------- */
 async function refreshStats(){
-  if (!user || !usdt || !vault) return;
+  if(!acct || !vault || !usdt) return;
   try {
-    const [uBal, dep, earn, vBal, apyBps, allowance] = await Promise.all([
-      usdt.balanceOf(user),
-      vault.userDeposit(user),
-      vault.userEarnings(user),
+    const [
+      balRaw,
+      userInfo,
+      pendingRaw,
+      vaultBalRaw,
+      dailyRateBP,
+      allowanceRaw
+    ] = await Promise.all([
+      usdt.balanceOf(acct),
+      vault.users(acct),
+      vault.pendingPassive(acct),
       vault.vaultBalance(),
-      vault.apyBps(),
-      usdt.allowance(user, CONFIG.vaultAddress)
+      vault.dailyRateBP(),
+      usdt.allowance(acct, VAULT_ADDR)
     ]);
 
-    $('#statUserUSDT').textContent = fmt(fromUnits(uBal));
-    $('#statUserDeposit').textContent = fmt(fromUnits(dep));
-    $('#statUserEarnings').textContent = fmt(fromUnits(earn));
-    $('#statVaultBal').textContent = fmt(fromUnits(vBal));
-    $('#statAPY').textContent = `${(Number(apyBps)/100).toFixed(2)}%`;
-    $('#allowanceView').textContent = fmt(fromUnits(allowance));
+    $("bal").textContent        = ethers.formatUnits(balRaw, usdtDecimals);
+    $("pending").textContent    = ethers.formatUnits(pendingRaw, usdtDecimals);
+    $("vaultBal").textContent   = ethers.formatUnits(vaultBalRaw, usdtDecimals);
+    $("dailyRate").textContent  = (Number(dailyRateBP)/100).toFixed(2) + "%";
+    $("allow").textContent      = ethers.formatUnits(allowanceRaw, usdtDecimals);
+    $("allowWarn").style.display= Number(ethers.formatUnits(allowanceRaw, usdtDecimals)) < 0.001 ? "inline-block" : "none";
 
-    // Owner-only allowance warning
-    if (isOwner) {
-      if (allowance.toString() === '0') {
-        $('#allowanceWarning').style.display = 'block';
-      } else {
-        $('#allowanceWarning').style.display = 'none';
-      }
-    }
-  } catch (e) {
-    log(`Refresh error: ${e.message}`);
-  }
+  } catch(e){ console.error(e); }
 }
 
-function setButtonsEnabled(ready){
-  $('#btnApprove').disabled = !ready;
-  $('#btnDeposit').disabled = !ready;
-  $('#btnClaim').disabled = !ready;
-  $('#btnCopyRef').disabled = !ready;
-}
-
-async function connect(){
-  if (!window.ethereum){ alert('No wallet found. Install MetaMask/Trust Wallet.'); return; }
-  provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-  await provider.send('eth_requestAccounts', []);
-  signer = provider.getSigner();
-  user = (await signer.getAddress());
-  net = await provider.getNetwork();
-
-  const ok = await ensureBSC();
-  if (!ok) return;
-
-  await initContracts();
-
-  isOwner = user.toLowerCase() === CONFIG.ownerAddress.toLowerCase();
-  $('#ownerOnly').classList.toggle('hide', !isOwner);
-  $('#ownerAddrView').textContent = CONFIG.ownerAddress;
-
-  $('#acctShort').textContent = shortAddr(user);
-  $('#netName').textContent = net.name === 'unknown' && net.chainId===56 ? 'BSC Mainnet' : `${net.name} (${net.chainId})`;
-  log(`Connected ${user}`);
-
-  // Generate your referral link
-  setRefLink(user);
-
-  // Auto-refresh loop
-  setButtonsEnabled(true);
+/* ---------- APPROVE ---------- */
+async function approve(){
+  const amt = $("approveAmt").value.trim();
+  if(!amt) return alert("Enter amount");
+  const v = ethers.parseUnits(amt, usdtDecimals);
+  const tx = await usdt.approve(VAULT_ADDR, v);
+  await tx.wait();
+  alert("Approved!");
   await refreshStats();
-  setInterval(refreshStats, CONFIG.refreshSec * 1000);
 }
 
-// ============== ACTIONS ==============
-$('#btnConnect').addEventListener('click', connect);
+/* ---------- DEPOSIT ---------- */
+async function deposit(){
+  const amt = $("depAmt").value.trim();
+  if(!amt) return alert("Enter amount");
+  const v = ethers.parseUnits(amt, usdtDecimals);
 
-$('#btnCopyRef').addEventListener('click', async ()=>{
-  const v = $('#inpRefLink').value; await navigator.clipboard.writeText(v); log('Referral link copied.');
-});
+  const curAllowance = await usdt.allowance(acct, VAULT_ADDR);
+  if (curAllowance < v) {
+    await approve();
+  }
 
-$('#btnApprove').addEventListener('click', async ()=>{
-  try{
-    const amt = $('#inpAmount').value || '0';
-    const tx = await usdt.approve(CONFIG.vaultAddress, toUnits(amt));
-    log('Approve submitted…'); await tx.wait(); log('Approve confirmed.'); await refreshStats();
-  }catch(e){ log(`Approve error: ${e.message}`); }
-});
+  let ref = getRefFromURL() || $("refAddr").value.trim();
+  if(!isAddr(ref) || ref.toLowerCase() === acct.toLowerCase()){
+    ref = ethers.ZeroAddress;
+  }
 
-$('#btnDeposit').addEventListener('click', async ()=>{
-  try{
-    const amt = $('#inpAmount').value || '0';
-    if (Number(amt) <= 0){ alert('Enter an amount'); return; }
-
-    // Resolve referral (cleaned)
-    let ref = getCleanRefAddress();
-    if (!ref || ref.toLowerCase() === user.toLowerCase()) ref = ethers.constants.AddressZero;
-
-    const tx = await vault.deposit(toUnits(amt), ref);
-    log('Deposit submitted…'); await tx.wait(); log('Deposit confirmed.'); await refreshStats();
-  }catch(e){ log(`Deposit error: ${e.message}`); }
-});
-
-$('#btnClaim').addEventListener('click', async ()=>{
-  try{
-    const tx = await vault.claim();
-    log('Claim submitted…'); await tx.wait(); log('Claim confirmed.'); await refreshStats();
-  }catch(e){ log(`Claim error: ${e.message}`); }
-});
-
-$('#btnOwnerWithdraw').addEventListener('click', async ()=>{
-  if (!isOwner){ alert('Owner only'); return; }
-  try{
-    const amt = $('#inpOwnerWithdraw').value || '0';
-    if (Number(amt) <= 0){ alert('Enter an amount'); return; }
-    const tx = await vault.ownerWithdraw(toUnits(amt));
-    log('Owner withdraw submitted…'); await tx.wait(); log('Owner withdraw confirmed.'); await refreshStats();
-  }catch(e){ log(`Owner withdraw error: ${e.message}`); }
-});
-
-// Init states
-setButtonsEnabled(false);
-$('#inpRefLink').value = window.location.origin + window.location.pathname;
-$('#netName').textContent = '—';
-
-// Wallet events
-if (window.ethereum){
-  window.ethereum.on('accountsChanged', () => { window.location.reload(); });
-  window.ethereum.on('chainChanged', () => { window.location.reload(); });
+  const tx = await vault.deposit(v, ref);
+  await tx.wait();
+  alert("Deposited!");
+  await refreshStats();
 }
+
+/* ---------- CLAIM ---------- */
+async function claim(){
+  const tx = await vault.claimPassive();
+  await tx.wait();
+  alert("Claimed!");
+  await refreshStats();
+}
+
+/* ---------- OWNER WITHDRAW ---------- */
+async function ownerWithdrawAmount(){
+  const amt = $("wdAmt").value.trim();
+  if(!amt) return alert("Enter amount");
+  const v = ethers.parseUnits(amt, usdtDecimals);
+  const tx = await vault.ownerWithdraw(v, acct);
+  await tx.wait();
+  alert("Withdrawn!");
+  await refreshStats();
+}
+async function ownerWithdrawAll(){
+  if(!confirm("Withdraw ALL USDT?")) return;
+  const tx = await vault.ownerWithdrawAll(acct);
+  await tx.wait();
+  alert("All funds withdrawn!");
+  await refreshStats();
+}
+
+/* ---------- UI HOOKS ---------- */
+$("connect").onclick = connect;
+$("approveBtn").onclick = approve;
+$("depositBtn").onclick = deposit;
+$("claim").onclick = claim;
+$("refresh").onclick = refreshStats;
+$("withdrawBtn").onclick = ownerWithdrawAmount;
+$("withdrawAllBtn").onclick = ownerWithdrawAll;
+$("copyRef").onclick = async ()=>{
+  const t = $("reflink").textContent;
+  if(t && t!=="—") {
+    await navigator.clipboard.writeText(t);
+    $("copyMsg").textContent="Copied!";
+    setTimeout(()=>{$("copyMsg").textContent="";},1500);
+  }
+};
 </script>
 </body>
 </html>
